@@ -12,7 +12,7 @@ venv/
 env/
 ENV/
 .venv
-
+{venv_name}
 # Flask
 instance/
 .webassets-cache

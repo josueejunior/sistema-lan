@@ -16,6 +16,7 @@ ENV/
 # Flask
 instance/
 .webassets-cache
+{venv_name}/
 
 # Ambiente
 .env

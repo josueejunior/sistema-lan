@@ -1,0 +1,85 @@
+# Docker Compose - Sistema de Automação de Lances
+version: '3.8'
+
+services:
+  # Aplicação principal Flask
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lance-bot
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=sqlite:////app/data/lance_system.db
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - COMPRAS_URL=https://www.gov.br/compras/pt-br
+      - HEADLESS_MODE=true
+      - LOG_LEVEL=INFO
+    volumes:
+      # Persiste banco de dados
+      - ./data:/app/data
+      # Persiste sessões
+      - ./sessions:/app/sessions
+      # Logs
+      - ./logs:/app/logs
+    networks:
+      - lance-network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis para cache e filas (opcional, para escalabilidade futura)
+  redis:
+    image: redis:7-alpine
+    container_name: lance-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - lance-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL (opcional, para produção em vez de SQLite)
+  # Descomente se preferir usar PostgreSQL
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: lance-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     - POSTGRES_DB=lance_system
+  #     - POSTGRES_USER=lance_user
+  #     - POSTGRES_PASSWORD=${DB_PASSWORD:-change-me}
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   networks:
+  #     - lance-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U lance_user"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+networks:
+  lance-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  # postgres-data:  # Descomente se usar PostgreSQL
